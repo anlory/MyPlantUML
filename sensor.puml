@@ -1,0 +1,55 @@
+@startuml
+title SenSor
+
+participant app
+participant SensorManager
+participant SensorEventQueue
+participant Receiver
+participant BitTube
+participant SensorEventConnection 
+participant SensorService
+participant SensorDevice
+participant sensor_1.0@service
+participant sensor_hal
+
+autonumber
+
+app->SensorManager:registerListener
+SensorManager->SensorManager:registerListenerImpl
+SensorManager->SensorManager:createEventQueue
+activate SensorManager
+SensorManager->SensorService:createSensorEventConnection
+SensorService->SensorEventConnection:new
+SensorEventConnection->BitTube:new
+SensorManager->SensorEventQueue:new
+deactivate  SensorManager
+SensorManager->Receiver:new
+Receiver->BitTube:监听
+SensorManager->SensorEventQueue:addSensor
+SensorEventQueue->SensorEventQueue:enableSensor
+SensorEventQueue->SensorEventConnection:enableDisable
+SensorEventConnection->SensorService:enable
+SensorService->sensor_1.0@service:activate
+sensor_1.0@service->sensor_hal:activate
+
+==sensor data==
+
+SensorService->SensorService:threadLoop
+SensorService->SensorDevice:poll
+sensor_hal<-:data
+sensor_hal->sensor_1.0@service:data
+sensor_1.0@service->SensorDevice:data
+
+SensorService->SensorEventConnection:sendEvents
+SensorEventConnection->SensorEventQueue:write
+SensorEventQueue->BitTube:sendObjects
+BitTube->Receiver:wake
+Receiver->Receiver:handleEvent
+Receiver->SensorEventQueue:dispatchSensorEvent
+SensorEventQueue->app:onSensorChanged
+
+
+
+
+
+@enduml
