@@ -1,0 +1,43 @@
+@startuml
+title Input System start 
+autonumber
+
+
+-> InputManagerService:new
+InputManagerService -> InputManagerService_jni:nativeInit
+InputManagerService_jni -> NativeInputManager:new
+NativeInputManager -> InputManager:new
+
+
+InputManager -> InputDispatcher:new
+InputManager -> InputClassifier:new
+InputManager -> InputReader:new
+InputManager -> EventHub:new
+
+InputManager -> InputManager:sm.addService
+
+-> InputManagerService:start
+InputManagerService -> InputManagerService_jni:nativeStart
+InputManagerService_jni -> InputManager:Start
+InputManager -> InputReader:Start
+InputReader -> InputReader:create InputReaderThread
+InputReader -> InputReader:loopOnce
+note left:Reader Loop
+
+
+InputManager -> InputDispatcher:Start
+InputDispatcher -> InputDispatcher:create InputDispatcherThread
+InputDispatcher -> InputDispatcher:dispatchOnce
+note left:Dispatcher Loop
+
+InputManagerService->InputManagerService:Watchdog.addMonitor
+InputManagerService->InputManagerService:registerShowTouchesSettingObserver
+note left:监听小圆点设置
+InputManagerService->InputManagerService:registerReceiver
+note left
+监听用户切换广播
+更新配置
+end note
+InputManagerService->InputManagerService:updateShowTouchesFromSettings
+
+@enduml
