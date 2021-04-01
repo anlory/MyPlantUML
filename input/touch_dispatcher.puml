@@ -1,0 +1,170 @@
+@startuml
+title Touch 事件流程
+
+
+
+participant EventHub
+participant InputReader
+participant InputDevice
+participant MultiTouchInputMapper
+participant TouchInputMapper
+participant QueuedInputListener
+participant ArgsQueue
+participant NotifyMotionArgs
+participant InputClassifier
+participant MotionClassifier
+participant InputDispatcher
+participant InputManagerService
+participant PhoneWindowManager
+participant WindowManagerService
+participant InputChannel
+participant InputEventReceiver
+participant ViewRootImpl
+
+autonumber
+WindowManagerService->InputChannel:new
+WindowManagerService->InputDispatcher:registerInputChannel
+WindowManagerService->InputDispatcher:setInputWindows
+note left
+更新窗口状态
+register窗口对应的InputChanle
+end note
+
+InputReader->InputReader:loopOnce
+InputReader->EventHub:getEvents
+
+InputDispatcher->InputDispatcher:dispatchOnce
+
+autonumber stop
+
+== Touch 事件 InputReader线程 ==
+autonumber
+
+
+InputReader->EventHub:getEvents
+-> EventHub:Events
+
+InputReader->InputReader:processEventsLocked
+note left:rawEvents
+InputReader->InputReader:processEventsForDeviceLocked
+InputReader->InputDevice:process
+InputDevice->InputDevice:for_each_mapper
+InputDevice->MultiTouchInputMapper:process
+MultiTouchInputMapper->MultiTouchInputMapper:mMultiTouchMotionAccumulator.process
+note left #DarkGray: rawEvents-> mSlots
+MultiTouchInputMapper->TouchInputMapper:process
+TouchInputMapper->TouchInputMapper:sync
+note left:EV_SYN && SYN_REPORT
+TouchInputMapper->MultiTouchInputMapper:syncTouch
+note left #DarkGray:Slots->Pointer
+TouchInputMapper->TouchInputMapper:processRawTouches
+activate TouchInputMapper #Red
+TouchInputMapper->TouchInputMapper:cookAndDispatch
+activate TouchInputMapper #Yellow
+TouchInputMapper->TouchInputMapper:consumeRawTouches
+TouchInputMapper->TouchInputMapper:cookPointerData
+note left #DarkGray: Pointer->PointerCoords&PointerProperties
+TouchInputMapper->TouchInputMapper:PointerController->setSpots
+note left:小圆点更新
+TouchInputMapper->TouchInputMapper:dispatchTouches
+activate TouchInputMapper #Green
+TouchInputMapper->TouchInputMapper:dispatchMotion
+note left #DarkGray: PointerCoords&PointerProperties->NotifyMotionArgs
+TouchInputMapper->QueuedInputListener:notifyMotion
+deactivate
+deactivate
+deactivate
+QueuedInputListener->ArgsQueue:push
+InputReader->QueuedInputListener:flush
+QueuedInputListener->ArgsQueue:for each NotifyArgs
+ArgsQueue->NotifyMotionArgs:notify
+
+NotifyMotionArgs->InputClassifier:notifyMotion
+InputClassifier->MotionClassifier:classify
+MotionClassifier->MotionClassifier:mEvents.push
+MotionClassifier->MotionClassifier:mService->classify
+MotionClassifier->MotionClassifier:updateClassification
+
+InputClassifier->InputDispatcher:notifyMotion
+note left
+deep touch disabled
+直接调用InputDispatch
+end note
+InputDispatcher->InputManagerService:interceptMotionBeforeQueueing
+InputManagerService->PhoneWindowManager:interceptMotionBeforeQueueing
+InputDispatcher->InputManagerService:filterInputEvent
+InputDispatcher->InputDispatcher:enqueueInboundEventLocked
+note left #DarkGray:NotifyMotionArgs -> MotionEntry
+hnote right #Red:InboundQueue.push
+InputDispatcher->InputDispatcher:mLooper->wake()
+
+== Touch 事件 InputDispatcher线程 ==
+autonumber 
+
+InputDispatcher->InputDispatcher:dispatchOnce
+activate InputDispatcher 
+InputDispatcher->InputDispatcher:dispatchOnceInnerLocked
+hnote left #Red:InboundQueue.erase
+
+activate InputDispatcher #Red
+InputDispatcher->InputDispatcher:dispatchMotionLocked
+activate InputDispatcher #Yellow
+InputDispatcher->InputDispatcher:findTouchedWindowTargetsLocked
+activate InputDispatcher #Green
+InputDispatcher->InputDispatcher:findTouchedWindowAtLocked
+InputDispatcher->InputDispatcher:checkWindowReadyForMoreInputLocked
+InputDispatcher->InputDispatcher:handleTargetsNotReadyLocked
+InputDispatcher->InputDispatcher:addWindowTargetLocked
+InputDispatcher->InputDispatcher:addgestureMonitors
+deactivate
+InputDispatcher->InputDispatcher:addGlobalMonitoringTargetsLocked
+note left:InputTargets
+InputDispatcher->InputDispatcher:dispatchEventLocked
+activate InputDispatcher #Green
+InputDispatcher->InputManagerService:pokeUserActivity
+InputDispatcher->InputDispatcher:for each InputTargets
+activate InputDispatcher #Blue
+InputDispatcher->InputDispatcher:getConnectionLocked
+InputDispatcher->InputDispatcher:prepareDispatchCycleLocked
+activate InputDispatcher #Gray
+InputDispatcher->InputDispatcher:enqueueDispatchEntriesLocked
+hnote left #Red:outboundQueue.push
+
+InputDispatcher->InputDispatcher:startDispatchCycleLocked
+activate InputDispatcher #LightCyan
+InputDispatcher->InputChannel:publishMotionEvent
+hnote left #Red
+connection.outboundQueue.erase
+connection.waitQueue.push
+end note
+
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate 
+InputDispatcher->InputDispatcher:releasePendingEventLocked
+activate InputDispatcher  #Yellow
+InputDispatcher->InputDispatcher:addRecentEventLocked
+deactivate
+deactivate
+deactivate
+
+InputChannel->InputEventReceiver:onInputEvent
+InputEventReceiver->ViewRootImpl:onInputEvent
+ViewRootImpl->ViewRootImpl:doProcessInputEvents
+ViewRootImpl->ViewRootImpl:deliverInputEvent
+note left:dispatchTouchEvent
+ViewRootImpl->InputEventReceiver:finishInputEvent
+InputEventReceiver->InputChannel:finishInputEvent
+
+InputChannel->InputDispatcher:wake
+
+InputDispatcher->InputDispatcher:handleReceiveCallback
+activate InputDispatcher
+InputDispatcher->InputDispatcher:doDispatchCycleFinishedLockedInterruptible
+deactivate
+hnote left #Red:connection.waitQueue.erase
+
+
+@enduml
