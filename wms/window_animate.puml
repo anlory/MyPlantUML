@@ -1,0 +1,76 @@
+@startuml
+
+
+title 窗口显示及窗口动画
+
+autonumber
+
+participant ViewRootImpl
+participant WMS
+participant WindowStateAnimator
+participant WindowState
+participant RenderThread
+participant WindowSurfacePlacer
+
+-> ViewRootImpl : performTraversals
+activate ViewRootImpl
+ViewRootImpl -> WMS : relayoutWindow 
+WMS -> WindowStateAnimator : createSurfaceLocked 
+
+activate WindowStateAnimator
+WindowStateAnimator -> WindowStateAnimator : resetDrawState 
+note left #Red:DRAW_PENDING
+deactivate WindowStateAnimator
+
+ViewRootImpl -> ViewRootImpl : performDraw
+    activate ViewRootImpl
+    ViewRootImpl -> RenderThread : setFrameCompleteCallback
+    deactivate ViewRootImpl
+deactivate ViewRootImpl
+
+RenderThread -> RenderThread : Waite Draw
+RenderThread -> ViewRootImpl : pendingDrawFinished
+ViewRootImpl -> WMS : finishDrawingWindow
+WMS -> WindowStateAnimator : finishDrawingLocked 
+note right #Red:COMMIT_DRAW_PENDING
+WMS -> WindowSurfacePlacer : requestTraversal 
+WindowSurfacePlacer -> WindowSurfacePlacer : wait vsync 
+
+activate WindowSurfacePlacer
+WindowSurfacePlacer -> WindowSurfacePlacer : performSurfacePlacement 
+activate WindowSurfacePlacer
+WindowSurfacePlacer -> WindowSurfacePlacer : performSurfacePlacementLoop 
+activate WindowSurfacePlacer
+WindowSurfacePlacer -> WindowSurfacePlacer : applySurfaceChangesTransaction 
+activate WindowSurfacePlacer
+WindowSurfacePlacer -> WindowStateAnimator : commitFinishDrawingLocked 
+note right:forAllWindows
+note left #Red:READY_TO_SHOW
+deactivate WindowSurfacePlacer
+deactivate WindowSurfacePlacer
+deactivate WindowSurfacePlacer
+deactivate WindowSurfacePlacer
+
+activate WindowStateAnimator
+WindowStateAnimator -> WindowState : performShowLocked 
+deactivate WindowStateAnimator
+
+activate WindowState
+WindowState -> WindowStateAnimator : applyEnterAnimationLocked 
+
+activate WindowStateAnimator
+WindowStateAnimator -> WindowStateAnimator : applyAnimationLocked 
+    activate WindowStateAnimator
+    WindowStateAnimator -> WindowStateAnimator : loadAnimationAttr 
+    deactivate  WindowStateAnimator
+deactivate  WindowStateAnimator
+
+WindowState -> WMS : scheduleAnimationLocked 
+note right #Red:HAS_DRAWN
+deactivate  WindowState
+
+
+
+
+
+@enduml
