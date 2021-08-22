@@ -1,0 +1,85 @@
+@startuml
+autonumber
+
+participant PowerManager
+participant PMS.BinderService
+participant PMS
+participant Notifier
+participant PhoneWindowManager
+participant DisplayPowerController
+
+-> PowerManager:WakeUp
+activate PowerManager
+PowerManager -> PMS.BinderService:WakeUp
+deactivate PowerManager
+activate PMS.BinderService
+PMS.BinderService -> PMS:wakeUpInternal
+deactivate PMS.BinderService
+activate PMS
+PMS -> PMS:wakeUpNoUpdateLocked
+activate PMS
+PMS -> PMS:setWakefulnessLocked
+activate PMS
+PMS -> Notifier:onWakefulnessChangeStarted
+deactivate 
+activate Notifier
+Notifier -> Notifier:AMS.onWakefulnessChanged
+Notifier -> Notifier:IMS.setInteractive(true)
+Notifier -> Notifier:BatteryStats.noteInteractive(true)
+Notifier -> Notifier:handleEarlyInteractiveChange
+activate Notifier
+Notifier -> PhoneWindowManager:startedWakingUp
+note right:keyGuard操作，更新灭屏超时
+Notifier -> Notifier:updatePendingBroadcastLocked
+note left:发送亮屏广播
+deactivate
+deactivate
+
+
+PMS -> Notifier:onWakeUp
+PMS -> PMS:userActivityNoUpdateLocked
+deactivate PMS
+
+
+PMS -> PMS:updatePowerStateLocked
+activate PMS
+PMS -> PMS:updateIsPoweredLocked
+note left:0. Basic state updates.
+PMS -> PMS:updateStayOnLocked
+PMS -> PMS:updateScreenBrightnessBoostLocked
+PMS -> PMS:updateWakeLockSummaryLocked
+note left:1. Update wakefulness.
+PMS -> PMS:updateUserActivitySummaryLocked
+PMS -> PMS:updateAttentiveStateLocked
+PMS -> PMS:updateWakefulnessLocked
+PMS -> PMS:updateProfilesLocked
+note left :2. Lock profiles that became inactive/not kept awake
+PMS -> PMS:updateDisplayPowerStateLocked
+activate PMS
+PMS -> DisplayPowerController:requestPowerState
+deactivate PMS
+note left :3. Update display power state.
+PMS -> PMS:updateDreamLocked
+note left :4. Update dream state (depends on display ready signal).
+PMS -> PMS:finishWakefulnessChangeIfNeededLocked
+note left: 5. Send notifications, if needed.
+activate PMS
+PMS -> Notifier:onWakefulnessChangeFinished
+deactivate PMS
+
+activate Notifier
+Notifier -> Notifier:handleLateInteractiveChange
+activate Notifier
+Notifier -> PhoneWindowManager:finishedWakingUp
+deactivate Notifier
+deactivate Notifier
+
+
+PMS -> PMS:updateSuspendBlockerLocked
+note left: 6. Update suspend blocker.
+deactivate PMS
+
+deactivate PMS
+
+
+@enduml

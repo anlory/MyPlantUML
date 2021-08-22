@@ -1,0 +1,59 @@
+
+
+@startuml
+
+title MultiTouchInputMapper 流程
+autonumber 
+
+->MultiTouchInputMapper:process
+activate MultiTouchInputMapper
+MultiTouchInputMapper->TouchInputMapper:process
+activate TouchInputMapper
+TouchInputMapper->CursorButtonAccumulator:process
+note left:处理鼠标或者触摸板按键事件
+TouchInputMapper->CursorScrollAccumulator:process
+note left:处理光标滑动事件
+TouchInputMapper->TouchButtonAccumulator:process
+note left:触摸，触控笔和工具按钮的状态
+autonumber 7
+TouchInputMapper->TouchInputMapper:sync
+note left #Red:一组rawEvent读取完，开始同步加工处理
+activate TouchInputMapper
+TouchInputMapper->MultiTouchInputMapper:syncTouch
+note right:整理mSlots的数据到mRawStatesPending, hover的状态也在此根据BTN_TOUCH的值判断
+TouchInputMapper->TouchInputMapper:processRawTouches
+note right:遍历mRawStatesPending的数据开始加工派发
+TouchInputMapper->TouchInputMapper:cookAndDispatch
+activate TouchInputMapper
+TouchInputMapper->TouchInputMapper:cookPointerData
+note right:将设备坐标调整到显示坐标, 并调整方向 mCurrentRawState->mCurrentCookedState
+TouchInputMapper->TouchInputMapper:dispatchButtonRelease
+note right
+13-16 对比当前和上一次事件的，hoveringIdBits和touchingIdBits,buttonState，
+确定事件的action,
+AMOTION_EVENT_ACTION_BUTTON_PRESS、RELEASE
+AMOTION_EVENT_ACTION_HOVER_ENTER 、EXIT、MOVE
+AMOTION_EVENT_ACTION_POINTER_DOWN 、UP、MOVE
+end note
+TouchInputMapper->TouchInputMapper:dispatchHoverExit
+TouchInputMapper->TouchInputMapper:dispatchTouches
+TouchInputMapper->TouchInputMapper:dispatchHoverEnterAndMove
+TouchInputMapper->TouchInputMapper:dispatchButtonPress
+
+
+TouchInputMapper->TouchInputMapper:dispatchMotion 
+note right: 如果action为 POINTER_DOWN/UP，且pinoterCount为1，则更改action为down/up
+note left: notifyMotion
+deactivate TouchInputMapper
+deactivate TouchInputMapper
+deactivate TouchInputMapper
+
+autonumber 6
+MultiTouchInputMapper->MultiTouchMotionAccumulator:process
+note right
+处理多点触摸协议的值，读取rawEvent的值到mSlots
+end Note
+deactivate MultiTouchInputMapper
+
+
+@enduml

@@ -1,0 +1,254 @@
+@startuml
+participant ViewRootImpl
+participant TextView
+participant EditableInputConnection
+participant ImeFocusController
+participant InputMethodManager
+participant InputMethodManagerService
+participant InputMethodService
+participant IInputMethodWrapper
+participant InputMethodSessionCallbackWrapper
+participant IInputMethodSessionWrapper
+participant ImeInputEventReceiver
+participant ImeInputEventSender
+
+
+
+autonumber
+
+' 初始化
+-> ViewRootImpl:new
+activate ViewRootImpl
+ViewRootImpl -> ViewRootImpl:getWindowSession
+activate ViewRootImpl
+ViewRootImpl -> InputMethodManager:ensureDefaultInstanceForDefaultDisplayIfNecessary
+deactivate ViewRootImpl
+deactivate ViewRootImpl
+activate InputMethodManager
+InputMethodManager -> InputMethodManager:createRealInstance
+activate InputMethodManager
+InputMethodManager -> InputMethodManagerService:getService
+InputMethodManager -> InputMethodManager:new
+activate InputMethodManager
+
+
+deactivate InputMethodManager
+deactivate InputMethodManager
+deactivate InputMethodManager
+
+
+ViewRootImpl -> ImeFocusController:new
+
+
+==输入法与焦点view绑定 ==
+' 获得焦点
+autonumber
+->ViewRootImpl:windowFocusChanged
+activate ViewRootImpl
+ViewRootImpl->TextView:onWindowFocusChanged
+activate TextView
+TextView->TextView:notifyFocusChangeToImeFocusController
+activate TextView
+TextView->ImeFocusController:onViewFocusChanged
+deactivate TextView
+activate ImeFocusController
+ImeFocusController->ViewRootImpl:dispatchCheckFocus
+deactivate ImeFocusController
+activate ViewRootImpl
+ViewRootImpl->ViewRootImpl:MSG_CHECK_FOCUS
+activate ViewRootImpl
+ViewRootImpl->ImeFocusController:CheckFocus
+deactivate ViewRootImpl
+deactivate ViewRootImpl
+
+activate ImeFocusController
+ImeFocusController->InputMethodManager:startInputInner
+activate  InputMethodManager
+InputMethodManager->TextView:onCreateInputConnection
+activate TextView
+TextView->EditableInputConnection:new
+note right:IMS与TextView沟通接口
+deactivate TextView
+activate EditableInputConnection
+
+InputMethodManager->InputMethodManagerService:startInputOrWindowGainedFocus
+activate InputMethodManagerService
+
+InputMethodManagerService->InputMethodManagerService:startInputUncheckedLocked
+activate InputMethodManagerService
+InputMethodManagerService->InputMethodService:bindCurrentInputMethodServiceLocked
+InputMethodService->InputMethodService:onBind
+activate InputMethodService
+InputMethodService->IInputMethodWrapper:new
+activate IInputMethodWrapper
+note right:IMMS与IMS沟通接口
+InputMethodManagerService->InputMethodManagerService:WMS.addWindowToken
+deactivate InputMethodManagerService
+
+InputMethodService -> InputMethodManagerService:onServiceConnected
+activate InputMethodManagerService
+InputMethodManagerService -> InputMethodManagerService:MSG_INITIALIZE_IME
+activate InputMethodManagerService
+InputMethodManagerService -> IInputMethodWrapper:initializeInternal
+IInputMethodWrapper -> IInputMethodWrapper:attachToken
+deactivate InputMethodManagerService
+
+InputMethodManagerService -> InputMethodManagerService:requestClientSessionLocked
+activate InputMethodManagerService
+InputMethodManagerService -> InputMethodManagerService:InputChannel.openInputChannelPair
+note left:创建InputChannel
+InputMethodManagerService -> InputMethodManagerService:MSG_CREATE_SESSION
+activate InputMethodManagerService
+InputMethodManagerService -> IInputMethodWrapper:createSession
+
+deactivate InputMethodManagerService
+deactivate InputMethodManagerService
+deactivate InputMethodManagerService
+
+
+IInputMethodWrapper -> IInputMethodWrapper:DO_CREATE_SESSION
+activate IInputMethodWrapper
+IInputMethodWrapper -> InputMethodSessionCallbackWrapper:new
+activate InputMethodSessionCallbackWrapper
+IInputMethodWrapper -> InputMethodService:createSession
+deactivate IInputMethodWrapper
+activate InputMethodService
+InputMethodService -> InputMethodService:onCreateInputMethodSessionInterface
+InputMethodService -> InputMethodSessionCallbackWrapper:sessionCreated
+deactivate InputMethodService
+activate InputMethodSessionCallbackWrapper
+InputMethodSessionCallbackWrapper -> IInputMethodSessionWrapper:new
+
+activate IInputMethodSessionWrapper
+IInputMethodSessionWrapper -> ImeInputEventReceiver:new
+activate ImeInputEventReceiver
+InputMethodSessionCallbackWrapper -> InputMethodManagerService:sessionCreated
+deactivate InputMethodSessionCallbackWrapper
+
+activate InputMethodManagerService
+InputMethodManagerService -> InputMethodManagerService:onSessionCreated
+activate InputMethodManagerService
+InputMethodManagerService -> InputMethodManagerService:attachNewInputLocked
+activate InputMethodManagerService
+InputMethodManagerService -> InputMethodManagerService:MSG_BIND_INPUT
+activate InputMethodManagerService
+InputMethodManagerService -> IInputMethodWrapper:bindInput
+note left
+获取 EditableInputConnection
+创建 InputConnectionWrapper
+end note
+deactivate InputMethodManagerService
+InputMethodManagerService -> InputMethodManagerService:MSG_START_INPUT
+activate InputMethodManagerService
+InputMethodManagerService -> IInputMethodWrapper:startInput
+deactivate InputMethodManagerService
+deactivate InputMethodManagerService
+deactivate InputMethodManagerService
+deactivate InputMethodManagerService
+
+activate IInputMethodWrapper
+IInputMethodWrapper -> InputMethodService:dispatchStartInputWithToken
+deactivate IInputMethodWrapper
+activate InputMethodService
+
+InputMethodService -> InputMethodService:startInput
+activate InputMethodService
+InputMethodService -> InputMethodService:doStartInput
+note left:焦点view和输入法完成绑定
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate 
+deactivate ViewRootImpl
+deactivate ImeInputEventReceiver
+
+==显示输入法==
+autonumber
+
+-> TextView:onTouchEvent
+activate TextView
+TextView -> TextView:getInputMethodManager
+TextView -> InputMethodManager:showSoftInput
+deactivate TextView
+activate InputMethodManager
+InputMethodManager -> InputMethodManager:showSoftInput
+activate InputMethodManager
+InputMethodManager -> InputMethodManagerService:showSoftInput
+deactivate InputMethodManager
+deactivate InputMethodManager
+activate InputMethodManagerService
+InputMethodManagerService -> InputMethodManagerService:showCurrentInputLocked
+
+activate InputMethodManagerService
+InputMethodManagerService -> InputMethodManagerService:MSG_SHOW_SOFT_INPUT
+activate InputMethodManagerService
+InputMethodManagerService -> IInputMethodWrapper:showSoftInput
+deactivate InputMethodManagerService
+deactivate InputMethodManagerService
+activate IInputMethodWrapper
+IInputMethodWrapper -> IInputMethodWrapper: DO_SHOW_SOFT_INPUT
+activate IInputMethodWrapper
+IInputMethodWrapper -> InputMethodService: showSoftInputWithToken
+deactivate IInputMethodWrapper
+deactivate IInputMethodWrapper
+activate InputMethodService
+InputMethodService -> InputMethodService: showSoftInput
+activate InputMethodService
+InputMethodService -> InputMethodService: showWindow
+deactivate InputMethodService
+deactivate InputMethodService
+
+
+== 事件派发 ==
+autonumber
+->ViewRootImpl:onInputEvent
+activate ViewRootImpl
+ViewRootImpl->ViewRootImpl:deliverInputEvent
+activate ViewRootImpl
+ViewRootImpl->ViewRootImpl:ImeInputStage.onProcess
+ViewRootImpl->ImeFocusController:onProcessImeInputStage
+deactivate ViewRootImpl
+deactivate ViewRootImpl
+activate ImeFocusController
+ImeFocusController->InputMethodManager:dispatchInputEvent
+deactivate ImeFocusController
+activate InputMethodManager
+InputMethodManager->InputMethodManager:sendInputEventOnMainLooperLocked
+activate InputMethodManager
+InputMethodManager->ImeInputEventSender:new 
+activate ImeInputEventSender
+InputMethodManager->ImeInputEventSender:sendInputEvent 
+deactivate InputMethodManager
+deactivate InputMethodManager
+
+ImeInputEventSender -> ImeInputEventReceiver:onInputEvent
+deactivate ImeInputEventSender
+activate ImeInputEventReceiver
+ImeInputEventReceiver->InputMethodService:dispatchGenericMotionEvent
+deactivate ImeInputEventReceiver
+activate InputMethodService
+InputMethodService->InputMethodService:onGenericMotionEvent
+activate InputMethodService
+InputMethodService->InputMethodService:...
+InputMethodService->InputMethodService:getCurrentInputConnection
+InputMethodService->EditableInputConnection:commitText
+deactivate InputMethodService
+deactivate InputMethodService
+activate EditableInputConnection
+EditableInputConnection->TextView:setText
+deactivate EditableInputConnection
+activate TextView
+deactivate TextView
+
+
+
+
+@enduml

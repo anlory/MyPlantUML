@@ -1,0 +1,26 @@
+@startuml
+
+autonumber
+NativeActivity -> PhoneWindow:takeInputQueue 
+note right:InputQueue.Callback
+-> ViewRootImpl:setView
+activate ViewRootImpl
+ViewRootImpl -> PhoneWindow:willYouTakeTheInputQueue
+ViewRootImpl -> InputQueue:new 
+InputQueue -> InputQueue_JNI:nativeInit
+note right:创建mDispatchReadFd和mDispatchWriteFd
+ViewRootImpl -> NativeActivity:onInputQueueCreated 
+deactivate ViewRootImpl
+====
+
+NativeActivity->InputQueue_JNI:attachLooper
+
+ViewRootImpl->ViewRootImpl:NativePostImeInputStage.onProcess
+ViewRootImpl->InputQueue:sendInputEvent
+InputQueue->InputQueue_JNI:nativeSendMotionEvent
+InputQueue_JNI->InputQueue_JNI:write -> mDispatchWriteFd
+InputQueue_JNI-> NativeActivity:mDispatchReadFd 可读
+
+NativeActivity->InputQueue_JNI:getEvent 
+note left:读取事件
+@enduml

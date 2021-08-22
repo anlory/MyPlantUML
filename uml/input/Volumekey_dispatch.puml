@@ -1,0 +1,60 @@
+
+@startuml
+
+autonumber
+
+ViewPostImeInputStage->DecorView:processKeyEvent
+DecorView->DecorView:not handled
+DecorView->PhoneWindow:onKeyDown/UP
+PhoneWindow->MediaSessionManager:dispatchVolumeKeyEvent\nAsSystemService
+
+MediaSessionManager->SessionManagerImpl:dispatchVolumeKeyEvent
+activate SessionManagerImpl
+SessionManagerImpl->SessionManagerImpl:dispatchVolumeKeyEventLocked
+activate SessionManagerImpl
+SessionManagerImpl->SessionManagerImpl:dispatchAdjustVolumeLocked
+activate SessionManagerImpl
+SessionManagerImpl->AudioManagerInternal:adjustSuggestedStreamVolumeForUid
+deactivate
+deactivate
+deactivate
+
+AudioManagerInternal->AudioService:adjustSuggestedStreamVolume
+activate AudioService
+AudioService->AudioService:adjustStreamVolume
+activate AudioService
+AudioService->AudioService:MSG_SET_DEVICE_VOLUME
+activate AudioService
+note left:设置音量
+AudioService->AudioService:setDeviceVolume
+AudioService->AudioService:applyDeviceVolume_syncVSS
+AudioService->AudioService:setStreamVolumeIndex
+AudioService->AudioSystem:setStreamVolumeIndexAS
+AudioSystem->AudioSystem:setStreamVolumeIndex
+note left:native methods called
+
+AudioService->AudioService:MSG_PERSIST_VOLUME
+activate AudioService
+AudioService->AudioService:System.putIntForUser
+deactivate AudioService
+
+
+
+deactivate AudioService
+AudioService->AudioService:sendVolumeUpdate
+activate AudioService
+note left:UI更新
+AudioService->VolumeController:postVolumeChanged
+VolumeController->VolumeDialogControllerImpl:volumeChanged
+VolumeDialogControllerImpl->VolumeDialogControllerImpl:onVolumeChangedW
+activate VolumeDialogControllerImpl
+VolumeDialogControllerImpl->VolumeDialogControllerImpl:StateChanged
+VolumeDialogControllerImpl->VolumeDialogControllerImpl:ShowRequested
+VolumeDialogControllerImpl->VolumeDialogControllerImpl:Events.writeEvent
+deactivate
+deactivate AudioService
+deactivate AudioService
+deactivate AudioService
+
+@enduml
+

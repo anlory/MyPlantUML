@@ -1,0 +1,148 @@
+@startuml
+title Key 事件流程
+
+
+
+participant EventHub
+participant InputReader
+participant InputDevice
+participant KeyboardInputMapper
+participant QueuedInputListener
+participant ArgsQueue
+participant NotifyKeyArgs
+participant InputClassifier
+participant InputDispatcher
+participant InputManagerService
+participant PhoneWindowManager
+participant WindowManagerService
+participant InputChannel
+participant InputEventReceiver
+participant ViewRootImpl
+
+autonumber
+WindowManagerService->InputChannel:new
+WindowManagerService->InputDispatcher:registerInputChannel
+WindowManagerService->InputDispatcher:setInputWindows
+note left
+更新窗口状态
+register窗口对应的InputChanle
+end note
+
+InputReader->InputReader:loopOnce
+InputReader->EventHub:getEvents
+
+InputDispatcher->InputDispatcher:dispatchOnce
+
+autonumber stop
+
+== key 事件 InputReader线程 ==
+autonumber
+
+
+InputReader->EventHub:getEvents
+-> EventHub:Events
+
+InputReader->InputReader:processEventsLocked
+note left:rawEvents
+InputReader->InputReader:processEventsForDeviceLocked
+InputReader->InputDevice:process
+InputDevice->InputDevice:for_each_mapper
+InputDevice->KeyboardInputMapper:process
+KeyboardInputMapper->KeyboardInputMapper:processKey
+note left #DarkGray: rawEvents-> NotifyKeyArgs
+KeyboardInputMapper->NotifyKeyArgs:
+NotifyKeyArgs->QueuedInputListener:notifyKey
+
+QueuedInputListener->ArgsQueue:push
+InputReader->QueuedInputListener:flush
+QueuedInputListener->ArgsQueue:for each NotifyArgs
+ArgsQueue->NotifyKeyArgs:notify
+
+NotifyKeyArgs->InputClassifier:notifyKey
+
+InputClassifier->InputDispatcher:notifyKey
+
+InputDispatcher->InputManagerService:interceptKeyBeforeQueueing
+InputManagerService->PhoneWindowManager:interceptKeyBeforeQueueing
+note right #Gold: POWER ASSIST WAKEUP KEY...
+
+InputDispatcher->InputManagerService:filterInputEvent
+InputDispatcher->InputDispatcher:enqueueInboundEventLocked
+note left #DarkGray:NotifyKeyArgs -> KeyEntry
+hnote right #Red:InboundQueue.push
+InputDispatcher->InputDispatcher:mLooper->wake()
+
+== key 事件 InputDispatcher线程 ==
+autonumber 
+
+InputDispatcher->InputDispatcher:dispatchOnce
+activate InputDispatcher 
+InputDispatcher->InputDispatcher:dispatchOnceInnerLocked
+hnote left #Red:InboundQueue.erase
+
+activate InputDispatcher #Red
+InputDispatcher->InputDispatcher:dispatchKeyLocked
+activate InputDispatcher #Yellow
+InputDispatcher->InputDispatcher:interceptKeyBeforeDispatching
+InputDispatcher->InputManagerService:interceptKeyBeforeDispatching
+InputManagerService->PhoneWindowManager:interceptKeyBeforeDispatching
+note right #Gold: HOME MENU SEARCH...
+InputDispatcher->InputDispatcher:findFocusedWindowTargetsLocked
+activate InputDispatcher #Green
+InputDispatcher->InputDispatcher:checkWindowReadyForMoreInputLocked
+InputDispatcher->InputDispatcher:handleTargetsNotReadyLocked
+InputDispatcher->InputDispatcher:addWindowTargetLocked
+InputDispatcher->InputDispatcher:updateDispatchStatistics
+deactivate
+
+InputDispatcher->InputDispatcher:addGlobalMonitoringTargetsLocked
+note left:InputTargets
+InputDispatcher->InputDispatcher:dispatchEventLocked
+activate InputDispatcher #Green
+InputDispatcher->InputManagerService:pokeUserActivity
+InputDispatcher->InputDispatcher:for each InputTargets
+activate InputDispatcher #Blue
+InputDispatcher->InputDispatcher:getConnectionLocked
+InputDispatcher->InputDispatcher:prepareDispatchCycleLocked
+activate InputDispatcher #Gray
+InputDispatcher->InputDispatcher:enqueueDispatchEntriesLocked
+hnote left #Red:outboundQueue.push
+
+InputDispatcher->InputDispatcher:startDispatchCycleLocked
+activate InputDispatcher #LightCyan
+InputDispatcher->InputChannel:publishKeyEvent
+hnote left #Red
+connection.outboundQueue.erase
+connection.waitQueue.push
+end note
+
+deactivate
+deactivate
+deactivate
+deactivate
+deactivate 
+InputDispatcher->InputDispatcher:releasePendingEventLocked
+activate InputDispatcher  #Yellow
+InputDispatcher->InputDispatcher:addRecentEventLocked
+deactivate
+deactivate
+deactivate
+
+InputChannel->InputEventReceiver:onInputEvent
+InputEventReceiver->ViewRootImpl:onInputEvent
+ViewRootImpl->ViewRootImpl:doProcessInputEvents
+ViewRootImpl->ViewRootImpl:deliverInputEvent
+note left:dispatchkeyEvent
+ViewRootImpl->InputEventReceiver:finishInputEvent
+InputEventReceiver->InputChannel:finishInputEvent
+
+InputChannel->InputDispatcher:wake
+
+InputDispatcher->InputDispatcher:handleReceiveCallback
+activate InputDispatcher
+InputDispatcher->InputDispatcher:doDispatchCycleFinishedLockedInterruptible
+
+hnote left #Red:connection.waitQueue.erase
+deactivate
+
+@enduml

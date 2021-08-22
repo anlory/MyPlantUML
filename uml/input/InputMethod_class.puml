@@ -1,0 +1,103 @@
+@startuml
+title InputMethod 结构
+
+
+
+interface IInputMethodClient{
+    onBindMethod()
+    onUnbindMethod()
+    setActive()
+    applyImeVisibility()
+    ...()
+}
+note top:InputMethodManagerService通知APP的接口
+
+interface InputConnection{
+    commitText()
+    commitCompletion()
+    reportFullscreenMode()
+    ...()
+}
+
+
+
+interface IInputContext{
+    commitText()
+    commitCompletion()
+    setSelection()
+    commitContent()
+}
+note left:输入法通知APP的接口
+
+
+interface IInputMethodManager{
+    showSoftInput()
+    hideSoftInput()
+    getInputMethodList()
+    startInputOrWindowGainedFocus()
+    addClient(IInputMethodClient client,IInputContext inputContext, ..)
+}
+
+
+class ControlledInputConnectionWrapper
+{
+    mDummyInputConnection
+}
+
+
+
+class IInputConnectionWrapper{
+    
+}
+
+
+
+
+
+class BaseInputConnection{
+
+}
+note bottom:InputContext的具体实现\n在InputBaseInputConnection
+
+class InputMethodManagerService
+{
+    SessionState.method
+}
+
+
+
+
+
+
+
+class InputMethodManager 
+{
+    mIInputContext
+    mClient
+}
+
+
+
+IInputContext <|-- IInputContext.Stub
+IInputContext.Stub <|-- IInputConnectionWrapper
+IInputConnectionWrapper <|-- ControlledInputConnectionWrapper
+
+InputConnection <|-- BaseInputConnection
+
+ControlledInputConnectionWrapper -> BaseInputConnection:mDummyInputConnection
+
+
+
+IInputMethodManager <|-- IInputMethodManager.Stub
+IInputMethodManager.Stub <|-- InputMethodManagerService
+
+IInputMethodManager <|-- InputMethodManager
+
+
+IInputMethodClient <|-- IInputMethodClient.Stub
+
+
+InputMethodManager -> ControlledInputConnectionWrapper :mInputContext
+InputMethodManager -> IInputMethodClient.Stub :mClient
+
+@enduml

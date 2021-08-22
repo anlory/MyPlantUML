@@ -1,0 +1,172 @@
+@startuml
+
+title Input Class 
+
+class NativeInputManager{
+    mInputManager
+    setInputWindows()
+    registerInputChannel()
+}
+
+
+interface InputReaderPolicyInterface{
+    getReaderConfiguration()
+    obtainPointerController()
+    notifyInputDevicesChanged()
+    getKeyboardLayoutOverlay()
+    getDeviceAlias()
+    getTouchAffineTransformation()
+}
+
+interface InputDispatcherPolicyInterface{
+    notifyConfigurationChanged()
+    notifyANR()
+    notifyFocusChanged()
+    getDispatcherConfiguration()
+    filterInputEvent()
+    interceptKeyBeforeQueueing()
+    interceptMotionBeforeQueueing()
+    interceptKeyBeforeDispatching()
+    dispatchUnhandledKey()
+    notifySwitch()
+    pokeUserActivity()
+    checkInjectEventsPermissionNonReentrant()
+    onPointerDownOutsideFocus()
+}
+
+interface PointerControllerPolicyInterface{
+    loadPointerIcon()
+    loadPointerResources()
+    loadAdditionalMouseResources()
+    getDefaultPointerIconId()
+    getCustomPointerIconId()
+}
+
+interface InputManagerInterface{
+    start()
+    stop()
+    getReader()
+    getDispatcher()
+}
+
+interface IInputFlinger{
+    setInputWindows()
+    registerInputChannel()
+    unregisterInputChannel()
+}
+
+abstract class BnInputFlinger{
+    onTransact()
+}
+
+class InputManager {
+    -mReader
+    -mClassifier
+    -mDispatcher
+
+    getReader()
+    getClassifier()
+    getDispatcher()
+}
+
+
+class InputReader{
+    -mEventHub
+    -mPolicy
+    mQueuedListener
+}
+
+interface InputReaderInterface{
+
+}
+
+class InputDispatcher{
+    -mPolicy
+    -mListener
+}
+note bottom:Listener->InputDispatch
+
+interface InputDispatcherInterface{
+
+}
+
+
+class InputClassifier {
+
+}
+
+interface InputClassifierInterface{
+
+}
+
+
+class EventHub{
+
+}
+
+interface EventHubInterface{
+    
+}
+
+
+
+interface  InputListenerInterface{
+    notifyConfigurationChanged()
+    notifyKey()
+    notifyMotion()
+    notifySwitch()
+    notifyDeviceReset()
+}
+
+class QueuedInputListener{
+    mInnerListener
+    flush()
+}
+note bottom:Listener->InputClassifier
+
+
+InputDispatcherPolicyInterface <|--NativeInputManager
+InputReaderPolicyInterface <|--NativeInputManager
+PointerControllerPolicyInterface <|--NativeInputManager
+
+note left: mPolicy
+
+
+InputManagerInterface <|-- InputManager
+BnInputFlinger <|-- InputManager
+IInputFlinger <|-- BnInputFlinger
+
+
+InputReaderInterface <|-- InputReader
+
+
+
+InputDispatcherInterface <|-- InputDispatcher
+InputListenerInterface <|-- InputDispatcherInterface
+
+
+
+
+
+InputListenerInterface <|--QueuedInputListener
+InputClassifierInterface <|--InputClassifier
+InputListenerInterface <|--InputClassifierInterface
+
+
+
+
+
+
+
+EventHubInterface <|--EventHub
+
+
+
+
+
+
+
+
+
+
+@enduml
